@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>sample deck</title>
+<style>
+  html,body{margin:0;height:100%;background:#0E0D0C;overflow:hidden}
+  #stage{width:1600px;height:900px;position:relative;transform-origin:top left}
+  .litho-vignette{position:absolute;inset:0;background:#EAE2D3;font-family:Georgia,serif;overflow:hidden}
+  .slab{position:absolute;background:#C9281D;box-shadow:6px 6px 0 #11100F}
+  .ink{position:absolute;background:#11100F}
+  .txt{position:absolute;color:#11100F;font-weight:700}
+  .rail{position:absolute;left:80px;bottom:30px;display:flex;gap:24px}
+  .rail button{border:0;background:none;font:700 12px monospace;color:#11100F;cursor:pointer}
+  .rail button.on{background:#C9281D;color:#fff}
+  .num{position:absolute;right:60px;top:40px;font:700 14px monospace;color:#11100F}
+</style>
+</head>
+<body>
+<div id="root"><div id="stage"><div class="litho-vignette" id="canvas"></div></div></div>
+<script>
+  const slides = [
+    { code: '01', title: 'Sample Slide One', body: 'A measured-layout sample used by the smoke test.', accent: '#C9281D' },
+    { code: '02', title: 'Sample Slide Two', body: 'Second slide verifies switching and per-slide extraction.', accent: '#1E3F5C' }
+  ];
+  let cur = 0;
+  const canvas = document.getElementById('canvas');
+  function render() {
+    const s = slides[cur];
+    canvas.innerHTML =
+      '<div class="num">№ ' + s.code + ' / 02</div>' +
+      '<div class="slab" style="left:80px;top:120px;width:520px;height:90px;background:' + s.accent + '"></div>' +
+      '<div class="txt" style="left:100px;top:140px;font-size:44px;color:#fff">' + s.title + '</div>' +
+      '<div class="ink" style="left:80px;top:260px;width:700px;height:4px"></div>' +
+      '<div class="txt" style="left:80px;top:300px;font-size:20px;width:700px;line-height:1.8">' + s.body + '</div>' +
+      '<div class="rail">' + slides.map((x, i) => '<button class="' + (i === cur ? 'on' : '') + '" data-i="' + i + '">' + x.code + '</button>').join('') + '</div>';
+    canvas.querySelectorAll('.rail button').forEach(b => b.onclick = () => { cur = +b.dataset.i; render(); });
+  }
+  function fit() { document.getElementById('stage').style.transform = 'scale(' + Math.min(innerWidth / 1600, innerHeight / 900) + ')'; }
+  addEventListener('resize', fit); fit(); render();
+</script>
+</body>
+</html>

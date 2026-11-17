@@ -1,0 +1,20 @@
+{
+  "canvas": [1600, 900],
+  "slideIn": [13.333333, 7.5],
+  "rootSelector": ".litho-vignette",
+  "labelPad": 2,
+  "settleMs": 600,
+  "countJs": "[...document.querySelectorAll('#root button')].filter(b => /^\\d\\d$/.test(b.textContent.trim())).length",
+  "switchJs": "[...document.querySelectorAll('#root button')].find(b => b.textContent.trim() === '{label}').click()",
+  "curJs": "(document.body.innerText.match(/№\\s*(\\d+)\\s*\\/\\s*0*{total}/) || [])[1]",
+  "fonts": {
+    "eaMap": {
+      "JetBrains Mono": "Noto Sans SC",
+      "Cormorant Garamond": "Noto Serif SC"
+    },
+    "defaultEa": "Noto Sans SC"
+  },
+  "rasterScale": 2.4,
+  "dropBlend": ["multiply"],
+  "skipSvgContaining": ["feTurbulence"]
+}

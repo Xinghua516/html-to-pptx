@@ -7,10 +7,18 @@ const JSZip = require('jszip');
 
 const DIR = import.meta.dirname;
 const SLIDES = path.resolve(process.argv[2] || path.join(DIR, 'slides'));
-const OUT = 'C:/Users/Administrator/Downloads/省政府奖学金之外-汇报舞台版.pptx';
+const OUT = process.argv[1];
+if (!OUT) { console.error('usage: node build.mjs <out.pptx> [slides-dir] [deck.config.json]'); process.exit(1); }
 
-const files = fs.readdirSync(SLIDES).filter(f => /^S\d\d\.jpg$/.test(f)).sort();
-if (files.length === 0) throw Error('no slides; run capture.mjs + stitch.mjs first');
+const DEFAULTS = { canvas: [1600, 900], slideIn: [13.333333, 7.5], rasterScale: 2.4, meta: {} };
+const cfgPath = process.argv[3] || path.join(SLIDES, 'config.json');
+const CFG = { ...DEFAULTS, ...(fs.existsSync(cfgPath) ? JSON.parse(fs.readFileSync(cfgPath, 'utf8')) : {}) };
+const SW = CFG.slideIn[0], SH = CFG.slideIn[1];
+const RW = Math.round(CFG.canvas[0] * CFG.rasterScale), RH = Math.round(CFG.canvas[1] * CFG.rasterScale);
+const WEMU = Math.round(SW * 914400), HEMU = Math.round(SH * 914400);
+
+const files = fs.readdirSync(SLIDES).filter(f => /^S\d+\.jpg$/.test(f)).sort();
+if (!files.length) throw Error('no slides; run capture.mjs + stitch.mjs first');
 
 function jpegSize(b) {
   let p = 2;
@@ -24,14 +32,14 @@ function jpegSize(b) {
 }
 
 const pres = new PptxGenJS();
-pres.defineLayout({ name: 'SCHOLAR_16x9', width: 13.333333, height: 7.5 });
-pres.layout = 'SCHOLAR_16x9';
-pres.author = '李昌润';
-pres.title = '《省政府奖学金之外》— 16:9 构成主义演示文稿';
-pres.subject = '浙江省政府奖学金学习经验分享研讨会 · 2026';
+pres.defineLayout({ name: 'CANVAS', width: SW, height: SH });
+pres.layout = 'CANVAS';
+pres.author = CFG.meta.author || 'html-to-pptx';
+pres.title = CFG.meta.title || 'HTML deck converted to PPTX (raster mode)';
+if (CFG.meta.subject) pres.subject = CFG.meta.subject;
 for (const f of files) {
   const slide = pres.addSlide();
-  slide.addImage({ path: path.join(SLIDES, f), x: 0, y: 0, w: 13.333333, h: 7.5, altText: '幻灯片 ' + f.slice(0, 3) });
+  slide.addImage({ path: path.join(SLIDES, f), x: 0, y: 0, w: SW, h: SH, altText: 'slide ' + f.replace('.jpg', '') });
 }
 await pres.writeFile({ fileName: OUT });
 console.log('written:', OUT, (fs.statSync(OUT).size / 1048576).toFixed(1) + 'MB');
@@ -53,8 +61,8 @@ for (let i = 0; i < slideXmls.length; i++) {
   const target = rels.match(new RegExp(`Id="${rel[1]}"[^>]*Target="([^"]+)"`))[1];
   const img = await zip.file('ppt/' + target.replace(/^\.\.\//, '')).async('nodebuffer');
   const { w, h } = jpegSize(img);
-  const full = off[1] === '0' && off[2] === '0' && +ext[1] >= 12190000 && +ext[2] >= 6850000;
-  if (!full || w !== 3840 || h !== 2160) ok = false;
+  const full = off[1] === '0' && off[2] === '0' && +ext[1] >= WEMU - 2000 && +ext[2] >= HEMU - 2000;
+  if (!full || w !== RW || h !== RH) ok = false;
   console.log(`slide${i + 1}: off(${off[1]},${off[2]}) ext(${ext[1]},${ext[2]}) media=${target} ${w}x${h} ${full ? 'OK' : 'BAD'}`);
 }
 console.log(ok && slideXmls.length === files.length && media.length === files.length ? 'VERIFY_OK' : 'VERIFY_FAIL');

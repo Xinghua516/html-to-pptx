@@ -1,16 +1,12 @@
 {
   "name": "html-to-pptx",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "private": true,
+  "type": "module",
+  "description": "HTML presentations to PPTX: measured-layout vector mode and pixel-faithful raster mode",
   "dependencies": {
+    "jszip": "^3.10.1",
+    "pptxgenjs": "^3.12.0",
     "sharp": "^0.35.5"
   }
 }

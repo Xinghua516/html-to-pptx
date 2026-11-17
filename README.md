@@ -14,15 +14,23 @@ Two modes:
 - `pip install -r requirements.txt` (python-pptx)
 - Optional verification: PowerPoint (COM export on Windows) or any OOXML geometry audit.
 
-## Install as a Qoder skill
+## Install (any agent)
 
-Clone this repo into your skills directory — the repo root is the complete skill:
+The repo root is a complete skill folder per the open [Agent Skills convention](https://agentskills.io): `SKILL.md` + `scripts/` + `references/` + `examples/` + `tests/`. Clone it into your tool's skills directory — one clone, no extra steps:
+
+| Tool | Personal | Project |
+|---|---|---|
+| Claude Code | `~/.claude/skills/html-to-pptx` | `.claude/skills/html-to-pptx` |
+| Codex | `~/.codex/skills/html-to-pptx` (newer builds also scan `~/.agents/skills`) | `.codex/skills/html-to-pptx` (or `.agents/skills`) |
+| Qoder | `~/.qoder/skills/html-to-pptx` | `.qoder/skills/html-to-pptx` |
+| OpenCode | `~/.config/opencode/skills/html-to-pptx` | `.opencode/skills/html-to-pptx` |
+| GitHub Copilot | `~/.copilot/skills/html-to-pptx` | `.github/skills/html-to-pptx` |
 
 ```
-git clone https://github.com/<you>/html-to-pptx ~/.qoder/skills/html-to-pptx
+git clone https://github.com/Xinghua516/html-to-pptx ~/.claude/skills/html-to-pptx   # example: Claude Code
 ```
 
-Then `/skills reload` and invoke `/html-to-pptx`. Any AI tool that reads `SKILL.md` + bundled scripts gets the full pipeline from a single clone; nothing else is required.
+Cross-tool installer alternative: `npx skills add Xinghua516/html-to-pptx -a '*'` (vercel-labs/skills). Any other agent: point it at `SKILL.md` and let it run the scripts directly. Tool-specific invocation and refresh details: [integrations/claude.md](integrations/claude.md), [integrations/codex.md](integrations/codex.md).
 
 ## Usage
 

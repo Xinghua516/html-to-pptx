@@ -7,7 +7,7 @@ description: Convert HTML presentations or pages to PPTX in two modes - pixel-fa
 
 ## Overview
 
-Self-contained skill: this repository root IS the skill (SKILL.md + scripts + references + examples + tests). Cloning it once gives a complete, deck-agnostic pipeline. Never guess layout — measure it in a real browser, then emit PPTX through libraries (python-pptx / PptxGenJS), never hand-rolled OOXML packages.
+Self-contained, agent-agnostic skill following the open Agent Skills folder convention (agentskills.io): this repository root IS the skill (SKILL.md + scripts + references + examples + tests). Cloning it once gives any coding agent the complete, deck-agnostic pipeline — Claude Code, Codex, Qoder, Cursor, Copilot, OpenCode, or a plain script runner. Tool-specific install paths and invocation: `integrations/claude.md`, `integrations/codex.md`. Never guess layout — measure it in a real browser, then emit PPTX through libraries (python-pptx / PptxGenJS), never hand-rolled OOXML packages.
 
 - **Vector mode (editable)**: layout IR (boxes, frozen text lines, SVG, images) → DrawingML shapes/text. Editable; documented loss list applies.
 - **Raster mode (pixel-faithful)**: per-slide screenshots at canvas×rasterScale, stitched tiles, one full-bleed image per slide. Not editable.
@@ -63,3 +63,4 @@ With a headless browser on the port: `node tests/smoke.mjs [port]` — extracts 
 - `references/mapping.md` — mapping table, transform/stacking rules, loss list, audit interpretation.
 - `examples/deck.config.json` + `examples/sample-deck.html` — reference config and runnable sample deck.
 - `tests/smoke.mjs` — end-to-end smoke test.
+- `integrations/claude.md` / `integrations/codex.md` — per-tool install paths, invocation, and refresh conventions.

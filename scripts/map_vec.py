@@ -17,9 +17,18 @@ from pptx.oxml import parse_xml
 
 DIR = Path(__file__).resolve().parent
 IR = Path(sys.argv[2]) if len(sys.argv) > 2 else DIR / 'ir'
-OUT = sys.argv[1] if len(sys.argv) > 1 else 'C:/Users/Administrator/Downloads/省政府奖学金之外-矢量可编辑版.pptx'
-EMU = 7620          # design px (1600x900 canvas) -> EMU (13.333in slide)
-PT = 0.6            # design px -> pt
+OUT = sys.argv[1] if len(sys.argv) > 1 else None
+if not OUT:
+    sys.exit('usage: python map_vec.py <out.pptx> [ir-dir] [deck.config.json]')
+DEFAULTS = {
+    'canvas': [1600, 900], 'slideIn': [13.333333, 7.5],
+    'fonts': {'eaMap': {}, 'defaultEa': 'Noto Sans SC'},
+    'dropBlend': ['multiply'], 'skipSvgContaining': ['feTurbulence'],
+}
+_cfg_path = Path(sys.argv[3]) if len(sys.argv) > 3 else IR / 'config.json'
+CFG = {**DEFAULTS, **(json.loads(_cfg_path.read_text('utf8')) if _cfg_path.exists() else {})}
+EMU = CFG['slideIn'][0] * 914400 / CFG['canvas'][0]
+PT = CFG['slideIn'][0] * 72 / CFG['canvas'][0]
 A = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"'
 I = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]
 DROP = []
@@ -228,7 +237,6 @@ def parse_svg_color(s, opacity=1.0):
     return c
 
 
-FONT_EA = {'Noto Serif SC': 'Noto Serif SC', 'Noto Sans SC': 'Noto Sans SC', 'JetBrains Mono': 'Noto Sans SC', 'Cormorant Garamond': 'Noto Serif SC'}
 
 
 def style_run(run, f, extra=1.0):
@@ -241,7 +249,7 @@ def style_run(run, f, extra=1.0):
     fam = f['family'].split(',')[0].strip().strip('"')
     font.name = fam
     rPr = run._r.get_or_add_rPr()
-    ea = rPr.makeelement(qn('a:ea'), {'typeface': FONT_EA.get(fam, 'Noto Sans SC')})
+    ea = rPr.makeelement(qn('a:ea'), {'typeface': CFG['fonts']['eaMap'].get(fam, CFG['fonts']['defaultEa'])})
     rPr.append(ea)
     if f.get('ls'):
         rPr.set('spc', str(int(round(f['ls'] * PT * 100))))
@@ -606,7 +614,7 @@ class SvgMapper:
             sh.shadow.inherit = False
 
     def run(self):
-        if 'feTurbulence' in self.rec['html']:
+        if any(k in self.rec['html'] for k in CFG['skipSvgContaining']):
             DROP.append('grain-overlay svg skipped')
             return
         M = m_parse(self.root.get('transform'))
@@ -619,7 +627,7 @@ def map_box(slide, rec, assets):
     r = rec['r']
     op = rec['opacity']
     bgi = rec.get('bgi') or ''
-    if rec.get('blend') == 'multiply':
+    if rec.get('blend') in CFG['dropBlend']:
         DROP.append('blend-multiply texture box')
         return
     if 'radial-gradient' in bgi:
@@ -670,8 +678,8 @@ def map_box(slide, rec, assets):
 def main():
     assets = json.loads((IR / 'assets.json').read_text('utf8'))
     prs = Presentation()
-    prs.slide_width = Emu(12192000)
-    prs.slide_height = Emu(6858000)
+    prs.slide_width = Emu(int(round(CFG['slideIn'][0] * 914400)))
+    prs.slide_height = Emu(int(round(CFG['slideIn'][1] * 914400)))
     files = sorted(IR.glob('S*.json'))
     for f in files:
         recs = json.loads(f.read_text('utf8'))

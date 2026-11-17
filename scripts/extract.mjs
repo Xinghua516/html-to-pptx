@@ -2,13 +2,25 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const PORT = process.env.CDP_PORT || 9226;
-const HTML = process.argv[2] || 'C:/Users/Administrator/Downloads/省政府奖学金之外-汇报舞台版.html';
+const HTML = process.argv[2];
+if (!HTML) { console.error('usage: node extract.mjs <html-path> [ir-dir] [deck.config.json]'); process.exit(1); }
 const DIR = path.resolve(process.argv[3] || path.join(import.meta.dirname, 'ir'));
 fs.mkdirSync(DIR, { recursive: true });
+
+const DEFAULTS = {
+  canvas: [1600, 900], slideIn: [13.333333, 7.5], rootSelector: 'body', labelPad: 2, settleMs: 600,
+  countJs: '1', switchJs: 'void 0', curJs: "String(1).padStart(2,'0')",
+  fonts: { eaMap: {}, defaultEa: 'Noto Sans SC' }, rasterScale: 2.4,
+  dropBlend: ['multiply'], skipSvgContaining: ['feTurbulence']
+};
+const cfgPath = process.argv[4] || process.env.DECK_CONFIG;
+const CFG = { ...DEFAULTS, ...(cfgPath ? JSON.parse(fs.readFileSync(cfgPath, 'utf8')) : {}) };
+const fill = (s, vars) => String(s).replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const list = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json();
 const page = list.find(t => t.type === 'page');
+if (!page) throw Error('no page target; start headless Chromium with --remote-debugging-port=' + PORT);
 const ws = new WebSocket(page.webSocketDebuggerUrl);
 await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
 let id = 0; const pending = new Map();
@@ -21,33 +33,30 @@ const evaluate = async (expression) => {
 };
 
 await send('Page.enable'); await send('Runtime.enable');
-await evaluate(`window.__CFG = ${JSON.stringify({ root: process.env.ROOT_SEL || '.litho-vignette' })}`);
-await send('Emulation.setDeviceMetricsOverride', { width: 1600, height: 900, deviceScaleFactor: 1, mobile: false });
+await evaluate(`window.__CFG = ${JSON.stringify({ root: CFG.rootSelector })}`);
+await send('Emulation.setDeviceMetricsOverride', { width: CFG.canvas[0], height: CFG.canvas[1], deviceScaleFactor: 1, mobile: false });
 await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
-await send('Page.navigate', { url: 'file:///' + encodeURI(HTML) });
-for (let i = 0; i < 80; i++) { if (await evaluate(`document.getElementById('root')?.children.length ?? 0`) > 0) break; await sleep(250); }
+await send('Page.navigate', { url: 'file:///' + encodeURI(path.resolve(HTML).replace(/\\/g, '/')) });
+for (let i = 0; i < 80; i++) { if (await evaluate(`document.getElementById('root')?.children.length ?? document.body.children.length`) > 0) break; await sleep(250); }
 await evaluate(`document.fonts.ready.then(() => 1)`);
 await sleep(800);
 
 const EXTRACT = fs.readFileSync(path.join(import.meta.dirname, 'extract-page.js'), 'utf8');
 await evaluate(EXTRACT);
+fs.writeFileSync(path.join(DIR, 'config.json'), JSON.stringify(CFG, null, 2));
 
 const assets = {};
-const COUNT_JS = process.env.COUNT_JS || `[...document.querySelectorAll('#root button')].filter(b => /^\\d\\d$/.test(b.textContent.trim())).length`;
-const CUR_JS = process.env.CUR_JS || `(document.body.innerText.match(/№\\s*(\\d+)\\s*\\/\\s*${total}/) || [])[1]`;
-const switchJs = label => process.env.SWITCH_JS ? process.env.SWITCH_JS.split('{label}').join(label) : `[...document.querySelectorAll('#root button')].find(b => b.textContent.trim() === '${label}').click()`;
-const total = await evaluate(COUNT_JS);
+const total = await evaluate(fill(CFG.countJs, {}));
 for (let n = 1; n <= total; n++) {
-  const label = String(n).padStart(2, '0');
-  await evaluate(switchJs(label));
-  await sleep(600);
+  const label = String(n).padStart(CFG.labelPad, '0');
+  await evaluate(fill(CFG.switchJs, { label }));
+  await sleep(CFG.settleMs);
   await evaluate(`document.fonts.ready.then(() => 1)`);
   await sleep(500);
   await evaluate(`document.fonts.ready.then(() => 1)`);
-  const cur = await evaluate(CUR_JS);
-  if (cur !== label) throw Error(`mismatch ${label} vs ${cur}`);
-  const data = await evaluate(`JSON.stringify(window.__extract())`);
-  const obj = JSON.parse(data);
+  const cur = await evaluate(fill(CFG.curJs, { total }));
+  if (String(cur) !== label) throw Error(`slide mismatch want ${label} got ${cur}`);
+  const obj = JSON.parse(await evaluate(`JSON.stringify(window.__extract())`));
   for (const [aid, url] of obj.assets) assets[aid] = url;
   fs.writeFileSync(path.join(DIR, `S${label}.json`), JSON.stringify(obj.recs));
   const kinds = {};
